@@ -74,6 +74,16 @@ func Estimate(f F, x float64, method Method, settings Settings) float64 {
 	return deriv / math.Pow(settings.Step, float64(method.Order))
 }
 
+var Forward = Method{
+	Stencil: []Point{{Loc: 0, Coeff: -1}, {Loc: 1, Coeff: 1}},
+	Order:   1,
+}
+
+var Backward = Method{
+	Stencil: []Point{{Loc: -1, Coeff: -1}, {Loc: 0, Coeff: 1}},
+	Order:   1,
+}
+
 // Central represents a first-order central difference for estimating the
 // derivative of a function
 var Central = Method{

@@ -59,8 +59,6 @@ var testsSecond = []testPoint{
 	},
 }
 
-// Something about first order tests, then second order, etc.
-
 func testFirstOrder(t *testing.T, method Method, tol float64, tests []testPoint) {
 	for _, test := range tests {
 		settings := DefaultSettings
@@ -74,6 +72,14 @@ func testFirstOrder(t *testing.T, method Method, tol float64, tests []testPoint)
 			t.Errorf("ans mismatch: expected %v, found %v", test.ans, ans)
 		}
 	}
+}
+
+func TestForward(t *testing.T) {
+	testFirstOrder(t, Forward, 1e-4, testsFirst)
+}
+
+func TestBackward(t *testing.T) {
+	testFirstOrder(t, Backward, 1e-4, testsFirst)
 }
 
 func TestCentral(t *testing.T) {
