@@ -1,0 +1,85 @@
+package diff
+
+import (
+	"math"
+	"testing"
+)
+
+var xSquared = Func(func(x float64) float64 { return x * x })
+
+type testPoint struct {
+	f   Func
+	loc float64
+	ans float64
+}
+
+var testsFirst = []testPoint{
+	{
+		f:   xSquared,
+		loc: 0,
+		ans: 0,
+	},
+	{
+		f:   xSquared,
+		loc: 5,
+		ans: 10,
+	},
+	{
+		f:   xSquared,
+		loc: 2,
+		ans: 4,
+	},
+	{
+		f:   xSquared,
+		loc: -5,
+		ans: -10,
+	},
+}
+
+var testsSecond = []testPoint{
+	{
+		f:   xSquared,
+		loc: 0,
+		ans: 2,
+	},
+	{
+		f:   xSquared,
+		loc: 5,
+		ans: 2,
+	},
+	{
+		f:   xSquared,
+		loc: 2,
+		ans: 2,
+	},
+	{
+		f:   xSquared,
+		loc: -5,
+		ans: 2,
+	},
+}
+
+// Something about first order tests, then second order, etc.
+
+func testFirstOrder(t *testing.T, method Method, tol float64, tests []testPoint) {
+	for _, test := range tests {
+		settings := DefaultSettings
+		ans := Estimate(test.f, test.loc, method, DefaultSettings)
+		if math.Abs(test.ans-ans) > tol {
+			t.Errorf("ans mismatch: expected %v, found %v", test.ans, ans)
+		}
+		settings.Concurrent = true
+		ans = Estimate(test.f, test.loc, method, DefaultSettings)
+		if math.Abs(test.ans-ans) > tol {
+			t.Errorf("ans mismatch: expected %v, found %v", test.ans, ans)
+		}
+	}
+}
+
+func TestCentral(t *testing.T) {
+	testFirstOrder(t, Central, 1e-6, testsFirst)
+}
+
+func TestCentralSecond(t *testing.T) {
+	testFirstOrder(t, Central2nd, 2e-3, testsSecond)
+}
