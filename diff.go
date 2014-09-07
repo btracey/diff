@@ -5,48 +5,49 @@ import (
 	"sync"
 )
 
+// A Point is a stencil location in a difference method
 type Point struct {
 	Loc   float64
 	Coeff float64
 }
 
-type F interface {
-	F(x float64) float64
-}
-
-type Func func(float64) float64
-
-func (f Func) F(x float64) float64 {
-	return f(x)
-}
-
 type Method struct {
 	Stencil []Point
-	Order   int // Decides the order of the method (will divide by step^order)
+	Order   int // The order of the difference method (first derivative, second derivative, etc.)
 }
 
-type Settings struct {
-	FofX       float64 // Value of the function at the current location (set to NaN if unknown)
-	Step       float64 // step size
-	Concurrent bool    // Should the function calls be executed concurrently
+// FDSettings is the settings structure for the FiniteDifference function
+type FDSettings struct {
+	OriginKnown bool    // Flag that the value at the origin x is known
+	OriginValue float64 // Value at the origin (only used if OriginKnown is true)
+	Step        float64 // step size
+	Concurrent  bool    // Should the function calls be executed concurrently
+	Method      Method  // Finite difference method to use
 }
 
-var DefaultSettings = Settings{
-	FofX: math.NaN(),
-	Step: 1e-6,
+// DefaultFDSettings is a basic set of settings for the FiniteDifference
+// function. Computes a central difference approximation for the first derivative
+// of the function.
+func DefaultFDSettings() *FDSettings {
+	return &FDSettings{
+		Step:   1e-6,
+		Method: Central,
+	}
 }
 
-// Estimate estimates the derivative of the function f at the given location using
-// the specified method and settings
-func Estimate(f F, x float64, method Method, settings Settings) float64 {
+// FiniteDifference estimates a derivative of the function f at the given location.
+// The order of derivative, sample locations, and other options are specified
+// by settings.
+func FiniteDiffernce(f func(float64) float64, x float64, settings *FDSettings) float64 {
 	var deriv float64
+	method := settings.Method
 	if !settings.Concurrent {
 		for _, pt := range method.Stencil {
-			if !math.IsNaN(settings.FofX) && pt.Loc == 0 {
-				deriv += pt.Coeff * settings.FofX
+			if settings.OriginKnown && pt.Loc == 0 {
+				deriv += pt.Coeff * settings.OriginValue
 				continue
 			}
-			deriv += pt.Coeff * f.F(x+settings.Step*pt.Loc)
+			deriv += pt.Coeff * f(x+settings.Step*pt.Loc)
 		}
 		return deriv / math.Pow(settings.Step, float64(method.Order))
 	}
@@ -54,16 +55,16 @@ func Estimate(f F, x float64, method Method, settings Settings) float64 {
 	wg := &sync.WaitGroup{}
 	mux := &sync.Mutex{}
 	for _, pt := range method.Stencil {
-		if !math.IsNaN(settings.FofX) && pt.Loc == 0 {
+		if settings.OriginKnown && pt.Loc == 0 {
 			mux.Lock()
-			deriv += pt.Coeff * settings.FofX
+			deriv += pt.Coeff * settings.OriginValue
 			mux.Unlock()
 			continue
 		}
 		wg.Add(1)
 		go func(pt Point) {
 			defer wg.Done()
-			fofx := f.F(x + settings.Step*pt.Loc)
+			fofx := f(x + settings.Step*pt.Loc)
 			mux.Lock()
 			defer mux.Unlock()
 			deriv += pt.Coeff * fofx

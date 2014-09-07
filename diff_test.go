@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-var xSquared = Func(func(x float64) float64 { return x * x })
+var xSquared = func(x float64) float64 { return x * x }
 
 type testPoint struct {
-	f   Func
+	f   func(float64) float64
 	loc float64
 	ans float64
 }
@@ -61,13 +61,14 @@ var testsSecond = []testPoint{
 
 func testFirstOrder(t *testing.T, method Method, tol float64, tests []testPoint) {
 	for _, test := range tests {
-		settings := DefaultSettings
-		ans := Estimate(test.f, test.loc, method, DefaultSettings)
+		settings := DefaultFDSettings()
+		settings.Method = method
+		ans := FiniteDiffernce(test.f, test.loc, settings)
 		if math.Abs(test.ans-ans) > tol {
 			t.Errorf("ans mismatch: expected %v, found %v", test.ans, ans)
 		}
 		settings.Concurrent = true
-		ans = Estimate(test.f, test.loc, method, DefaultSettings)
+		ans = FiniteDiffernce(test.f, test.loc, settings)
 		if math.Abs(test.ans-ans) > tol {
 			t.Errorf("ans mismatch: expected %v, found %v", test.ans, ans)
 		}
