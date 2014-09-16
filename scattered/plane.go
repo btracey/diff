@@ -1,11 +1,11 @@
 package scattered
 
 import (
-	"math"
-
 	"github.com/gonum/floats"
 	"github.com/gonum/matrix/mat64"
 )
+
+/*
 
 // WeightMethod is a function that computes the weight of point t when fitting
 // to point s
@@ -55,6 +55,7 @@ func (g SqExponential) Weight(s, t float64) float64 {
 	norm := dist / g.Scale
 	return math.Exp(-norm * norm)
 }
+*/
 
 type Point struct {
 	Location float64
@@ -62,7 +63,7 @@ type Point struct {
 	Weight   float64
 }
 
-type PointND struct {
+type PointMV struct {
 	Location []float64
 	Value    float64
 	Weight   float64
@@ -82,7 +83,7 @@ type Intercept struct {
 //
 // deriv is stored in place
 
-func Plane(x []float64, points []*PointND, intercept Intercept, deriv []float64) {
+func Plane(x []float64, points []*PointMV, intercept Intercept, deriv []float64) {
 	nPoints := len(points)
 
 	for _, pt := range points {
@@ -94,27 +95,32 @@ func Plane(x []float64, points []*PointND, intercept Intercept, deriv []float64)
 		panic("scattered: slice length mismatch")
 	}
 
-	A := mat64.NewDense(nPoints, len(x), nil)
+	var A *mat64.Dense
 
 	if intercept.Force {
+		A = mat64.NewDense(nPoints, len(x), nil)
 		for i, pt := range points {
 			loc := A.RowView(i)
 			copy(loc, pt.Location)
 			floats.Sub(loc, x)
 		}
 	} else {
+		A = mat64.NewDense(nPoints, len(x)+1, nil)
 		for i, pt := range points {
 			loc := A.RowView(i)
 			copy(loc, pt.Location)
 		}
+		panic("need to add in row of ones, need to fix weighted solve and getting derivative")
 	}
 
-	b := mat64.NewDense(nPoints, 1, nil)
+	var b *mat64.Dense
 	if intercept.Force {
+		b = mat64.NewDense(nPoints, 1, nil)
 		for i, pt := range points {
 			b.Set(i, 0, pt.Value-intercept.Value)
 		}
 	} else {
+		panic("this also needs to be fixed for adding one")
 		for i, pt := range points {
 			b.Set(i, 0, pt.Value)
 		}
@@ -130,6 +136,9 @@ func Plane(x []float64, points []*PointND, intercept Intercept, deriv []float64)
 	ans := mat64.Solve(A, b)
 	for i := range deriv {
 		deriv[i] = ans.At(i, 0)
+	}
+	if !intercept.Force {
+		panic("this also needs to be fixed for adding one")
 	}
 }
 
